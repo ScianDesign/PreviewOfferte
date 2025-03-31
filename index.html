@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Meta tag per controllo cache -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <title>Offerte Telegram</title>
     <style>
+        /* Stili ottimizzati */
+        :root {
+            --primary: #2AABEE;
+            --secondary: #229ED9;
+        }
+
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', system-ui;
             margin: 0;
             padding: 20px;
-            background: #f0f2f5;
+            background: #f8f9fa;
         }
 
         .container {
@@ -21,151 +23,122 @@
             margin: 0 auto;
         }
 
-        h1 {
-            color: #1a1a1a;
-            text-align: center;
-            margin: 40px 0;
-            font-size: 2.5em;
-        }
-
-        .grid-container {
-            display: grid;
-            gap: 25px;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        }
-
         .card {
-            background: #fff;
-            border-radius: 12px;
+            background: white;
+            border-radius: 15px;
             padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
             transition: transform 0.2s;
         }
 
         .card:hover {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
         }
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .card-header h3 {
-            margin: 0;
-            color: #2d3436;
-        }
-
-        .date {
-            color: #636e72;
-            font-size: 0.9em;
-            white-space: nowrap;
-        }
-
-        .card-content {
-            color: #2d3436;
-            line-height: 1.5;
-        }
-
-        .card-content img {
+        .media img {
             max-width: 100%;
-            height: auto;
-            border-radius: 8px;
+            border-radius: 10px;
             margin-top: 15px;
         }
 
-        .error-message {
-            color: #e74c3c;
-            text-align: center;
-            padding: 20px;
-            font-weight: bold;
+        .error {
+            color: #dc3545;
+            padding: 15px;
+            border-radius: 8px;
+            background: #ffeef0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎯 Offerte Esclusive</h1>
-        <div id="rss-feed" class="grid-container"></div>
+        <h1>🔥 Offerte in Diretta</h1>
+        <div id="posts-container"></div>
         <div id="error-container"></div>
     </div>
 
     <script>
+        // Configurazione (MODIFICARE QUESTI VALORI)
+        const BOT_TOKEN = '6543212345:AAE5vL2x_PxjmJjklJkJjKJkjkLkJkLKJKL'; // Sostituire con token reale
+        const CHANNEL_USERNAME = '@AndreaScian_BrokerAstauto'; // Nome canale con @
+        const CACHE_TIME = 300000; // 5 minuti
 
-        
-        async function loadFeed() {
-            const feedContainer = document.getElementById('rss-feed');
-            const errorContainer = document.getElementById('error-container');
-
+        async function fetchChannelPosts() {
             try {
-                // URL RSS con cache-buster + proxy immagini
-                const RSS_URL = `https://corsproxy.io/?${encodeURIComponent('https://rsshub.app/telegram/channel/AndreaScian_BrokerAstauto?timestamp=' + Date.now())}`;
+                // Controlla la cache
+                const cached = localStorage.getItem('tgPosts');
+                if (cached && Date.now() - JSON.parse(cached).timestamp < CACHE_TIME) {
+                    renderPosts(JSON.parse(cached).data);
+                    return;
+                }
 
-                const response = await fetch(RSS_URL);
-                if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
+                // Fetch ultimi 20 messaggi
+                const response = await fetch(
+                    `https://api.telegram.org/bot${BOT_TOKEN}/getChatHistory?chat_id=${CHANNEL_USERNAME}&limit=20`
+                );
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
-                const xmlString = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+                const data = await response.json();
+                if (!data.ok) throw new Error(data.description);
 
-                // Verifica elementi RSS
-                const items = xmlDoc.querySelectorAll('item');
-                if (items.length === 0) throw new Error('Nessuna offerta trovata nel feed');
+                // Salva in cache
+                localStorage.setItem('tgPosts', JSON.stringify({
+                    data: data.result,
+                    timestamp: Date.now()
+                }));
 
-                feedContainer.innerHTML = ''; // Resetta il contenuto
-
-                items.forEach(item => {
-                    const title = item.querySelector('title')?.textContent || 'Nessun titolo';
-                    const description = item.querySelector('description')?.textContent || '';
-                    const pubDate = item.querySelector('pubDate')?.textContent || new Date().toISOString();
-
-                    // Formattazione contenuto
-                    const formattedDate = new Date(pubDate).toLocaleDateString('it-IT', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                    });
-
-                    // Fix per le immagini di Telegram
-                    const formattedDescription = description
-                        .replace(/<img src="(.+?)"/g, '<img src="https://rsshub.app/$1"')
-                        .replace(/<a href="(.+?)"/g, '<a href="$1" target="_blank" rel="noopener"');
-
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <h3>${title}</h3>
-                            <span class="date">📅 ${formattedDate}</span>
-                        </div>
-                        <div class="card-content">${formattedDescription}</div>
-                    `;
-
-                    feedContainer.appendChild(card);
-                });
-
+                renderPosts(data.result);
             } catch (error) {
-                console.error('Errore nel caricamento:', error);
-                errorContainer.innerHTML = `
-                    <div class="error-message">
-                        ❌ Errore nel caricamento delle offerte: ${error.message}<br>
-                        Ricarica la pagina o riprova più tardi.
-                    </div>
-                `;
+                showError(`Errore: ${error.message}`);
             }
         }
 
-        // Carica il feed all'avvio e ogni 30 minuti
-        loadFeed();
-        setInterval(loadFeed, 1800000); 
+        function renderPosts(posts) {
+            const container = document.getElementById('posts-container');
+            container.innerHTML = '';
 
-        // Aggiornamento visivo ogni 5 min (senza reload)
-        setInterval(() => {
-            document.querySelectorAll('.date').forEach(el => {
-                el.textContent = `📅 ${new Date().toLocaleTimeString('it-IT')}`;
+            posts.forEach(post => {
+                const content = post.message || post;
+                if (!content.text && !content.caption) return;
+
+                const postDate = new Date(content.date * 1000).toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                const mediaContent = content.photo ? 
+                    `<div class="media">
+                        <img src="https://api.telegram.org/file/bot${BOT_TOKEN}/${content.photo[0].file_id}" alt="Offerta">
+                    </div>` : '';
+
+                const postHTML = `
+                    <div class="card">
+                        <div class="header">
+                            <span class="date">📅 ${postDate}</span>
+                        </div>
+                        <div class="content">
+                            <p>${content.text || content.caption}</p>
+                            ${mediaContent}
+                        </div>
+                    </div>
+                `;
+
+                container.insertAdjacentHTML('beforeend', postHTML);
             });
-        }, 300000);
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Inizializzazione
+        fetchChannelPosts();
+        setInterval(fetchChannelPosts, CACHE_TIME);
     </script>
 </body>
 </html>
