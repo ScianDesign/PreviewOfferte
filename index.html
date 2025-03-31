@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offertelegram</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🛍️ Offerte del Giorno</h1>
+        <div id="rss-feed" class="grid-container"></div>
+    </div>
+
+    <script>
+        // Configurazione Feed RSS (SOSTITUISCI CON IL TUO URL)
+        const RSS_URL = 'https://example.com/rss-feed.xml';
+
+        // Funzione principale
+        async function loadFeed() {
+            try {
+                const response = await fetch(RSS_URL);
+                const xmlString = await response.text();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+                
+                const items = xmlDoc.querySelectorAll('item');
+                const feedContainer = document.getElementById('rss-feed');
+
+                items.forEach(item => {
+                    const title = item.querySelector('title').textContent;
+                    const description = item.querySelector('description').textContent;
+                    const date = new Date(item.querySelector('pubDate').textContent).toLocaleDateString('it-IT');
+
+                    feedContainer.innerHTML += `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>${title}</h3>
+                                <span class="date">📅 ${date}</span>
+                            </div>
+                            <div class="card-content">${description}</div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error('Errore nel caricamento:', error);
+                feedContainer.innerHTML = '<p>😟 Errore nel caricamento delle offerte. Riprova più tardi.</p>';
+            }
+        }
+
+        // Avvia il caricamento
+        loadFeed();
+    </script>
+</body>
+</html>
