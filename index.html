@@ -16,7 +16,7 @@
         // Aggiorna la pagina ogni 1 ora
 setInterval(() => location.reload(), 3600000); 
         // Configurazione Feed RSS (SOSTITUISCI CON IL TUO URL)
-        const RSS_URL = 'https://rss.app/feeds/CijDhFHd5AihGL9A.xml';
+        const RSS_URL = 'https://rss.app/feeds/CijDhFHd5AihGL9A.xml?timestamp=${Date.now()}';
 
         // Funzione principale
         async function loadFeed() {
