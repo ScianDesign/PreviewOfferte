@@ -100,7 +100,7 @@
 
             try {
                 // URL RSS con cache-buster + proxy immagini
-                const RSS_URL = `https://corsproxy.io/?${encodeURIComponent(`https://rsshub.app/telegram/channel/AndreaScian_BrokerAstauto?timestamp=${Date.now()}`)}`;
+                const RSS_URL = `https://corsproxy.io/?${encodeURIComponent('https://rsshub.app/telegram/channel/AndreaScian_BrokerAstauto?timestamp=' + Date.now())}`;
 
                 const response = await fetch(RSS_URL);
                 if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
