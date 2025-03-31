@@ -3,55 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offertelegram</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- Meta tag per controllo cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Offerte Telegram</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #1a1a1a;
+            text-align: center;
+            margin: 40px 0;
+            font-size: 2.5em;
+        }
+
+        .grid-container {
+            display: grid;
+            gap: 25px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            color: #2d3436;
+        }
+
+        .date {
+            color: #636e72;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        .card-content {
+            color: #2d3436;
+            line-height: 1.5;
+        }
+
+        .card-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            padding: 20px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛍️ Offerte del Giorno</h1>
+        <h1>🎯 Offerte Esclusive</h1>
         <div id="rss-feed" class="grid-container"></div>
+        <div id="error-container"></div>
     </div>
 
     <script>
-        // Aggiorna la pagina ogni 1 ora
-setInterval(() => location.reload(), 3600000); 
-        // Configurazione Feed RSS (SOSTITUISCI CON IL TUO URL)
-        const RSS_URL = 'https://rss.app/feeds/CijDhFHd5AihGL9A.xml?timestamp=${Date.now()}';
-
-        // Funzione principale
         async function loadFeed() {
+            const feedContainer = document.getElementById('rss-feed');
+            const errorContainer = document.getElementById('error-container');
+
             try {
+                // URL RSS con cache-buster + proxy immagini
+                const RSS_URL = `https://rsshub.app/telegram/channel/AndreaScian_BrokerAstauto?timestamp=${Date.now()}`;
+
                 const response = await fetch(RSS_URL);
+                if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
+                
                 const xmlString = await response.text();
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-                
+
+                // Verifica elementi RSS
                 const items = xmlDoc.querySelectorAll('item');
-                const feedContainer = document.getElementById('rss-feed');
+                if (items.length === 0) throw new Error('Nessuna offerta trovata nel feed');
+
+                feedContainer.innerHTML = ''; // Resetta il contenuto
 
                 items.forEach(item => {
-                    const title = item.querySelector('title').textContent;
-                    const description = item.querySelector('description').textContent;
-                    const date = new Date(item.querySelector('pubDate').textContent).toLocaleDateString('it-IT');
+                    const title = item.querySelector('title')?.textContent || 'Nessun titolo';
+                    const description = item.querySelector('description')?.textContent || '';
+                    const pubDate = item.querySelector('pubDate')?.textContent || new Date().toISOString();
 
-                    feedContainer.innerHTML += `
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>${title}</h3>
-                                <span class="date">📅 ${date}</span>
-                            </div>
-                            <div class="card-content">${description}</div>
+                    // Formattazione contenuto
+                    const formattedDate = new Date(pubDate).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+
+                    // Fix per le immagini di Telegram
+                    const formattedDescription = description
+                        .replace(/<img src="(.+?)"/g, '<img src="https://rsshub.app/$1"')
+                        .replace(/<a href="(.+?)"/g, '<a href="$1" target="_blank" rel="noopener"');
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <h3>${title}</h3>
+                            <span class="date">📅 ${formattedDate}</span>
                         </div>
+                        <div class="card-content">${formattedDescription}</div>
                     `;
+
+                    feedContainer.appendChild(card);
                 });
+
             } catch (error) {
                 console.error('Errore nel caricamento:', error);
-                feedContainer.innerHTML = '<p>😟 Errore nel caricamento delle offerte. Riprova più tardi.</p>';
+                errorContainer.innerHTML = `
+                    <div class="error-message">
+                        ❌ Errore nel caricamento delle offerte: ${error.message}<br>
+                        Ricarica la pagina o riprova più tardi.
+                    </div>
+                `;
             }
         }
 
-        // Avvia il caricamento
+        // Carica il feed all'avvio e ogni 30 minuti
         loadFeed();
+        setInterval(loadFeed, 1800000); 
+
+        // Aggiornamento visivo ogni 5 min (senza reload)
+        setInterval(() => {
+            document.querySelectorAll('.date').forEach(el => {
+                el.textContent = `📅 ${new Date().toLocaleTimeString('it-IT')}`;
+            });
+        }, 300000);
     </script>
 </body>
 </html>
